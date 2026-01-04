@@ -37,9 +37,9 @@ interface PeixariaContextType {
 const DEFAULT_SETTINGS: ShopSettings = {
   name: "Khrismir",
   logoUrl: "",
-  nif: "",
+  nif: "5000123456",
   address: "Lubango, Huíla - Angola",
-  whatsapp: "",
+  whatsapp: "923 000 000",
   isOpen: true,
   baseDeliveryFee: 1000,
   ivaRate: 14,
@@ -79,10 +79,8 @@ export const PeixariaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   ]);
 
-  // Aplicar cor de destaque dinamicamente
   useEffect(() => {
     document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-    // Gerar uma versão transparente para backgrounds
     const r = parseInt(settings.accentColor.slice(1, 3), 16);
     const g = parseInt(settings.accentColor.slice(3, 5), 16);
     const b = parseInt(settings.accentColor.slice(5, 7), 16);
@@ -93,6 +91,7 @@ export const PeixariaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (email === 'jorgeamaral2009@gmail.com' && pass === 'podescre0') {
       setIsAdminAuthenticated(true);
       setAdminEmail(email);
+      localStorage.setItem('user_name', 'Administrador');
       return true;
     }
     return false;
@@ -102,6 +101,7 @@ export const PeixariaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const emp = employees.find(e => e.email === email && e.password === pass);
     if (emp) {
       setCurrentStaff(emp);
+      localStorage.setItem('user_name', emp.name);
       return true;
     }
     return false;
@@ -121,6 +121,7 @@ export const PeixariaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setAdminEmail(null);
     setCurrentStaff(null);
     setCurrentCustomer(null);
+    localStorage.removeItem('user_name');
   };
 
   const addCustomer = (customer: Customer) => setCustomers(prev => [...prev, customer]);
@@ -152,7 +153,7 @@ export const PeixariaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const newOrder: Order = {
       id: `ORD-${Math.floor(Math.random() * 10000)}`,
       customerId: currentCustomer?.id || 'guest', 
-      customerName: orderData.customerName || currentCustomer?.name || 'Consumidor',
+      customerName: orderData.customerName || currentCustomer?.name || 'Consumidor Final',
       items: [...cart],
       total: cart.reduce((acc, i) => acc + (i.price * i.quantity), 0),
       status: OrderStatus.PENDING,

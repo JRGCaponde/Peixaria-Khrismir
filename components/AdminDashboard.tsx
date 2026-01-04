@@ -45,11 +45,12 @@ import {
   MoreVertical,
   LogOut,
   Calendar,
-  Filter
+  Filter,
+  Printer
 } from 'lucide-react';
 import { usePeixaria } from '../PeixariaContext';
 import { formatCurrency } from '../constants';
-import { OrderStatus, Product, FishCategory, Employee, EmployeeRole, Customer, PaymentMethod, ShopSettings } from '../types';
+import { OrderStatus, Product, FishCategory, Employee, EmployeeRole, Customer, PaymentMethod, ShopSettings, CartItem } from '../types';
 
 // --- UTILS ---
 const getGreeting = () => {
@@ -59,8 +60,82 @@ const getGreeting = () => {
   return "Boa noite";
 };
 
-// --- COMPONENTE DE CONFIGURAÇÕES ---
+// --- COMPONENTE DE RECIBO PDV ---
+const POSPrintReceipt: React.FC<{ cart: CartItem[], settings: ShopSettings, total: number }> = ({ cart, settings, total }) => {
+  const date = new Date().toLocaleString('pt-AO');
+  const iva = settings.ivaEnabled ? (total * settings.ivaRate) / (100 + settings.ivaRate) : 0;
+  const operator = localStorage.getItem('user_name') || 'OPERADOR';
+  
+  return (
+    <div className="print-only thermal-receipt text-black bg-white">
+      <div className="text-center mb-4 space-y-1">
+        {settings.logoUrl && (
+          <img src={settings.logoUrl} className="h-12 w-auto mx-auto mb-2 object-contain filter grayscale invert" alt="Logo" />
+        )}
+        <h1 className="font-bold text-lg uppercase leading-tight">{settings.name}</h1>
+        <p className="text-[9px] font-medium">{settings.address}</p>
+        <p className="text-[9px] font-medium">NIF: {settings.nif}</p>
+        <p className="text-[9px] font-medium">TEL: {settings.whatsapp}</p>
+      </div>
+      
+      <div className="border-t border-dashed border-black my-2"></div>
+      
+      <div className="text-[9px] space-y-0.5 mb-2">
+        <p className="flex justify-between"><span>DATA:</span> <span>{date}</span></p>
+        <p className="flex justify-between"><span>OPERADOR:</span> <span>{operator}</span></p>
+        <p className="flex justify-between"><span>MODO:</span> <span>PRESENCIAL (PDV)</span></p>
+      </div>
+      
+      <div className="border-t border-dashed border-black my-2"></div>
+      
+      <div className="mb-2">
+        <div className="grid grid-cols-12 text-[9px] font-bold border-b border-black pb-1 mb-1">
+          <span className="col-span-6">DESCRIÇÃO</span>
+          <span className="col-span-2 text-center">QTD</span>
+          <span className="col-span-4 text-right">TOTAL</span>
+        </div>
+        {cart.map((item, idx) => (
+          <div key={idx} className="grid grid-cols-12 text-[9px] py-0.5">
+            <span className="col-span-6 truncate">{item.name}</span>
+            <span className="col-span-2 text-center">{item.quantity}{item.unit}</span>
+            <span className="col-span-4 text-right">{formatCurrency(item.price * item.quantity).replace('Kz', '')}</span>
+          </div>
+        ))}
+      </div>
+      
+      <div className="border-t border-dashed border-black my-2"></div>
+      
+      <div className="space-y-1 text-right text-[10px] font-bold">
+        <div className="flex justify-between">
+          <span className="font-normal">SUBTOTAL (LÍQUIDO):</span>
+          <span>{formatCurrency(total - iva)}</span>
+        </div>
+        {settings.ivaEnabled && (
+          <div className="flex justify-between">
+            <span className="font-normal">IVA ({settings.ivaRate}%):</span>
+            <span>{formatCurrency(iva)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-base mt-2 border-t border-black pt-1">
+          <span>TOTAL A PAGAR:</span>
+          <span>{formatCurrency(total)}</span>
+        </div>
+      </div>
+      
+      <div className="border-t border-dashed border-black my-4"></div>
+      
+      <div className="text-center text-[9px] space-y-1">
+        <p className="font-bold">OBRIGADO PELA PREFERÊNCIA!</p>
+        <p>Software Processado por Computador</p>
+        <p className="mt-4 italic opacity-70">SaaS Management by Khrismir OS</p>
+      </div>
+      
+      <div className="h-10"></div>
+    </div>
+  );
+};
 
+// --- COMPONENTE DE CONFIGURAÇÕES ---
 const SettingsPanel: React.FC = () => {
   const { settings, updateSettings } = usePeixaria();
   const [formData, setFormData] = useState<ShopSettings>({ ...settings });
@@ -100,7 +175,7 @@ const SettingsPanel: React.FC = () => {
           </div>
           <h1 className="text-xl font-bold text-white uppercase tracking-tight">Configurações da Empresa</h1>
         </div>
-        <button onClick={handleSave} className="w-full md:w-auto dynamic-accent-bg text-white px-6 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:brightness-110 dynamic-accent-shadow">
+        <button onClick={handleSave} className="w-full md:w-auto dynamic-accent-bg text-white px-6 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:brightness-110 dynamic-accent-shadow transition-all">
           <Save className="h-4 w-4" /> Salvar Alterações
         </button>
       </div>
@@ -201,7 +276,7 @@ const StaffManagement: React.FC = () => {
         <h1 className="text-xl font-bold text-white uppercase tracking-tight flex items-center gap-3">
           <Briefcase className="h-5 w-5 dynamic-accent-text" /> Equipa Operacional
         </h1>
-        <button onClick={() => setShowModal(true)} className="w-full sm:w-auto dynamic-accent-bg text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase hover:brightness-110 dynamic-accent-shadow">
+        <button onClick={() => setShowModal(true)} className="w-full sm:w-auto dynamic-accent-bg text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase hover:brightness-110 dynamic-accent-shadow transition-all">
           Novo Operador
         </button>
       </div>
@@ -248,7 +323,7 @@ const StaffManagement: React.FC = () => {
                 <select value={newStaff.role} onChange={e => setNewStaff({...newStaff, role: e.target.value as any})} className="w-full p-3.5 bg-[#0a0a1a] border border-white/10 rounded-xl text-white outline-none">
                   {Object.values(EmployeeRole).map(role => <option key={role} value={role}>{role}</option>)}
                 </select>
-                <button className="w-full dynamic-accent-bg text-white py-4 rounded-2xl font-bold uppercase text-xs mt-4">Confirmar Cadastro</button>
+                <button className="w-full dynamic-accent-bg text-white py-4 rounded-2xl font-bold uppercase text-xs mt-4 transition-all active:scale-95">Confirmar Cadastro</button>
              </form>
           </div>
         </div>
@@ -293,9 +368,7 @@ const Stats: React.FC = () => {
   const totalRevenue = filteredOrders.reduce((acc, o) => acc + o.total, 0);
   const totalOrdersCount = filteredOrders.length;
   
-  // Agrupar dados para o gráfico baseado no filtro (simplificado para exibição)
   const chartData = useMemo(() => {
-    // Caso real agruparia por data, aqui geramos dados baseados nos filtrados para visualização
     return [
       { n: 'Sem 1', v: totalRevenue * 0.2 },
       { n: 'Sem 2', v: totalRevenue * 0.3 },
@@ -319,7 +392,6 @@ const Stats: React.FC = () => {
           <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Acompanhe a pulsação do seu negócio</p>
         </div>
 
-        {/* Date Range Picker UI */}
         <div className="w-full md:w-auto bg-white/5 p-1.5 rounded-2xl border border-white/10 glass flex flex-col md:flex-row items-stretch md:items-center gap-2">
           <div className="flex gap-1">
             {rangeButtons.map((btn) => (
@@ -414,7 +486,7 @@ const Inventory: React.FC = () => {
         <h1 className="text-xl font-bold text-white uppercase tracking-tight flex items-center gap-3">
           <Package className="h-5 w-5 dynamic-accent-text" /> Gestão de Estoque
         </h1>
-        <button onClick={() => setShowModal(true)} className="w-full sm:w-auto dynamic-accent-bg text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:brightness-110 dynamic-accent-shadow">
+        <button onClick={() => setShowModal(true)} className="w-full sm:w-auto dynamic-accent-bg text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:brightness-110 dynamic-accent-shadow transition-all">
           <Plus className="h-4 w-4" /> Novo Lote
         </button>
       </div>
@@ -467,7 +539,7 @@ const Inventory: React.FC = () => {
                    <input required type="number" placeholder="Preço KG (Kz)" onChange={e => setNewProduct({...newProduct, pricePerKg: Number(e.target.value)})} className="w-full p-3.5 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-1 dynamic-accent-ring" />
                    <input required type="number" placeholder="Estoque (KG)" onChange={e => setNewProduct({...newProduct, stockKg: Number(e.target.value)})} className="w-full p-3.5 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-1 dynamic-accent-ring" />
                 </div>
-                <button className="w-full dynamic-accent-bg text-white py-4 rounded-2xl font-bold uppercase text-xs mt-4">Confirmar Entrada</button>
+                <button className="w-full dynamic-accent-bg text-white py-4 rounded-2xl font-bold uppercase text-xs mt-4 transition-all active:scale-95 shadow-lg">Confirmar Entrada</button>
              </form>
           </div>
         </div>
@@ -478,16 +550,27 @@ const Inventory: React.FC = () => {
 
 // --- POS (Otimizado) ---
 const POS: React.FC = () => {
-  const { products, cart, addToCart, removeFromCart, placeOrder } = usePeixaria();
+  const { products, cart, addToCart, removeFromCart, placeOrder, settings } = usePeixaria();
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   
   const total = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
   const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  const handlePrint = () => {
+    if (cart.length === 0) return;
+    // Pequeno delay para garantir que o componente POSPrintReceipt está renderizado com os dados do carrinho atual
+    setTimeout(() => {
+      window.print();
+    }, 50);
+  };
+
   return (
     <div className="h-[calc(100vh-56px)] flex flex-col md:flex-row bg-[#020208] overflow-hidden relative">
-      <div className="flex-grow flex flex-col p-4 md:p-6 space-y-4 overflow-hidden">
+      {/* Elemento de Recibo Oculto para Impressão Térmica 80mm */}
+      <POSPrintReceipt cart={cart} settings={settings} total={total} />
+      
+      <div className="flex-grow flex flex-col p-4 md:p-6 space-y-4 overflow-hidden no-print">
         <div className="relative glass p-1 rounded-2xl">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 h-4 w-4" />
           <input 
@@ -500,9 +583,9 @@ const POS: React.FC = () => {
         
         <div className="flex-grow overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-20 custom-scrollbar">
           {filtered.map(p => (
-            <div key={p.id} className="bg-white/5 border border-white/10 p-3 rounded-2xl glass hover:border-blue-500/30 transition-all flex flex-col">
-              <div className="h-28 rounded-xl overflow-hidden mb-3 relative group">
-                <img src={p.imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+            <div key={p.id} className="bg-white/5 border border-white/10 p-3 rounded-2xl glass hover:border-blue-500/30 transition-all flex flex-col group">
+              <div className="h-28 rounded-xl overflow-hidden mb-3 relative">
+                <img src={p.imageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                    <span className="text-[8px] font-bold text-white uppercase tracking-widest">{p.category}</span>
                 </div>
@@ -511,9 +594,9 @@ const POS: React.FC = () => {
               <div className="mt-auto">
                  <button 
                    onClick={() => addToCart({productId: p.id, name: p.name, quantity: 1, unit: 'kg', price: p.pricePerKg})} 
-                   className="w-full dynamic-accent-soft-bg dynamic-accent-text p-2 rounded-xl text-[9px] font-bold hover:dynamic-accent-bg hover:text-white transition shadow-sm"
+                   className="w-full dynamic-accent-soft-bg dynamic-accent-text p-2 rounded-xl text-[9px] font-bold hover:dynamic-accent-bg hover:text-white transition-all shadow-sm"
                  >
-                   ADCIONAR KG
+                   ADICIONAR KG
                  </button>
               </div>
             </div>
@@ -522,72 +605,104 @@ const POS: React.FC = () => {
       </div>
 
       {/* Cart Drawer Desktop */}
-      <div className="hidden md:flex w-80 lg:w-96 bg-[#050510] border-l border-white/5 flex-col glass shadow-2xl">
+      <div className="hidden md:flex w-80 lg:w-96 bg-[#050510] border-l border-white/5 flex-col glass shadow-2xl no-print">
         <div className="p-5 border-b border-white/5 flex justify-between items-center">
-           <h2 className="font-bold text-white text-xs uppercase tracking-widest">Caixa de Venda</h2>
+           <h2 className="font-bold text-white text-xs uppercase tracking-widest">Resumo de Venda</h2>
            <span className="text-[9px] font-bold dynamic-accent-text uppercase px-2 py-0.5 rounded-lg bg-white/5">{cart.length} itens</span>
         </div>
         <div className="flex-grow overflow-y-auto p-5 space-y-3 custom-scrollbar">
           {cart.map((item, idx) => (
-            <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-xl text-[10px] border border-white/5 group">
-              <div>
+            <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-xl text-[10px] border border-white/5 group animate-in slide-in-from-right-2">
+              <div className="flex-grow">
                 <p className="text-white font-bold">{item.name}</p>
                 <p className="text-slate-500 uppercase font-bold mt-0.5">{item.quantity}kg @ {formatCurrency(item.price)}</p>
               </div>
               <div className="flex items-center gap-3">
                  <p className="dynamic-accent-text font-bold">{formatCurrency(item.price * item.quantity)}</p>
-                 <button onClick={() => removeFromCart(item.productId, item.unit)} className="text-red-500/40 hover:text-red-500 transition-colors"><X className="h-4 w-4"/></button>
+                 <button onClick={() => removeFromCart(item.productId, item.unit)} className="text-red-500/40 hover:text-red-500 transition-colors p-1"><X className="h-4 w-4"/></button>
               </div>
             </div>
           ))}
           {cart.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
                <ShoppingCart className="h-10 w-10 mb-2" />
-               <p className="text-[10px] font-bold uppercase">Cesto Vazio</p>
+               <p className="text-[10px] font-bold uppercase tracking-widest">Cesto de Venda Vazio</p>
             </div>
           )}
         </div>
         <div className="p-6 bg-[#020208] border-t border-white/5 space-y-4 dynamic-accent-shadow">
-          <div className="flex justify-between items-end">
-             <span className="text-slate-500 font-bold text-[9px] uppercase tracking-widest">Total Líquido</span>
+          <div className="flex justify-between items-end border-b border-white/5 pb-4">
+             <span className="text-slate-500 font-bold text-[9px] uppercase tracking-widest">Total a Liquidar</span>
              <span className="text-2xl font-bold text-white tracking-tighter">{formatCurrency(total)}</span>
           </div>
-          <button onClick={() => placeOrder({})} disabled={cart.length === 0} className="w-full dynamic-accent-bg text-white py-4 rounded-2xl font-bold text-xs uppercase disabled:opacity-20 hover:brightness-110 active:scale-95 transition-all">
-             Concluir Transação
-          </button>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={handlePrint} 
+              disabled={cart.length === 0} 
+              className="flex items-center justify-center gap-2 bg-white/5 text-slate-300 py-4 rounded-2xl font-bold text-[10px] uppercase border border-white/10 hover:bg-white/10 disabled:opacity-20 transition-all active:scale-95"
+            >
+               <Printer className="h-3.5 w-3.5" /> Recibo
+            </button>
+            <button 
+              onClick={() => placeOrder({})} 
+              disabled={cart.length === 0} 
+              className="dynamic-accent-bg text-white py-4 rounded-2xl font-bold text-[10px] uppercase disabled:opacity-20 hover:brightness-110 active:scale-95 transition-all shadow-lg"
+            >
+               Finalizar
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Cart Button Mobile */}
-      <div className="md:hidden fixed bottom-6 right-6 z-50">
-         <button onClick={() => setMobileCartOpen(true)} className="dynamic-accent-bg text-white p-4 rounded-full shadow-2xl dynamic-accent-shadow relative">
+      <div className="md:hidden fixed bottom-6 right-6 z-50 no-print">
+         <button onClick={() => setMobileCartOpen(true)} className="dynamic-accent-bg text-white p-4 rounded-full shadow-2xl dynamic-accent-shadow relative transition-transform active:scale-90">
             <ShoppingCart className="h-6 w-6" />
-            {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-white text-black text-[9px] font-bold h-5 w-5 rounded-full flex items-center justify-center">{cart.length}</span>}
+            {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-white text-black text-[9px] font-bold h-5 w-5 rounded-full flex items-center justify-center shadow-lg">{cart.length}</span>}
          </button>
       </div>
 
       {/* Mobile Cart Backdrop/Modal */}
       {mobileCartOpen && (
-        <div className="fixed inset-0 z-[100] md:hidden bg-black/80 backdrop-blur-md animate-in fade-in">
-           <div className="absolute bottom-0 left-0 right-0 bg-[#050510] rounded-t-[40px] p-8 max-h-[80vh] flex flex-col glass animate-in slide-in-from-bottom-20">
+        <div className="fixed inset-0 z-[100] md:hidden bg-black/80 backdrop-blur-md animate-in fade-in no-print">
+           <div className="absolute bottom-0 left-0 right-0 bg-[#050510] rounded-t-[40px] p-8 max-h-[85vh] flex flex-col glass animate-in slide-in-from-bottom-20">
               <div className="flex justify-between items-center mb-6">
                  <h2 className="text-lg font-bold text-white uppercase tracking-tight">Venda Actual</h2>
-                 <button onClick={() => setMobileCartOpen(false)} className="text-slate-500"><X className="h-6 w-6" /></button>
+                 <button onClick={() => setMobileCartOpen(false)} className="text-slate-500 hover:text-white p-1"><X className="h-6 w-6" /></button>
               </div>
               <div className="flex-grow overflow-y-auto space-y-3 mb-6 custom-scrollbar">
                 {cart.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
-                     <span className="text-white font-bold">{item.name} <small className="text-slate-500 font-normal">x{item.quantity}kg</small></span>
+                  <div key={idx} className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5 animate-in slide-in-from-right-2" style={{ animationDelay: `${idx * 50}ms` }}>
+                     <div className="flex-grow">
+                        <span className="text-white font-bold block">{item.name}</span>
+                        <span className="text-slate-500 font-bold text-[9px] uppercase">{item.quantity}kg @ {formatCurrency(item.price)}</span>
+                     </div>
                      <span className="dynamic-accent-text font-bold">{formatCurrency(item.price * item.quantity)}</span>
                   </div>
                 ))}
               </div>
-              <div className="pt-6 border-t border-white/5">
-                 <div className="flex justify-between items-center mb-6">
-                    <span className="text-slate-500 font-bold uppercase text-[10px]">Total Final</span>
-                    <span className="text-3xl font-bold text-white">{formatCurrency(total)}</span>
+              <div className="pt-6 border-t border-white/5 space-y-4">
+                 <div className="flex justify-between items-center mb-2">
+                    <span className="text-slate-500 font-bold uppercase text-[10px]">Total de Venda</span>
+                    <span className="text-3xl font-bold text-white tracking-tighter">{formatCurrency(total)}</span>
                  </div>
-                 <button onClick={() => { placeOrder({}); setMobileCartOpen(false); }} className="w-full dynamic-accent-bg text-white py-5 rounded-2xl font-bold uppercase shadow-xl">Processar Pagamento</button>
+                 <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={handlePrint}
+                      disabled={cart.length === 0}
+                      className="flex items-center justify-center gap-2 bg-white/5 text-white py-5 rounded-2xl font-bold uppercase text-xs border border-white/10 active:scale-95 transition-all disabled:opacity-20"
+                    >
+                      <Printer className="h-4 w-4" /> Recibo
+                    </button>
+                    <button 
+                      onClick={() => { placeOrder({}); setMobileCartOpen(false); }} 
+                      disabled={cart.length === 0}
+                      className="dynamic-accent-bg text-white py-5 rounded-2xl font-bold uppercase text-xs shadow-xl active:scale-95 transition-all disabled:opacity-20"
+                    >
+                      Concluir
+                    </button>
+                 </div>
               </div>
            </div>
         </div>
@@ -600,19 +715,19 @@ const POS: React.FC = () => {
 const CRM: React.FC = () => {
   const { customers } = usePeixaria();
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 md:p-8 animate-in fade-in">
       <h1 className="text-xl font-bold text-white uppercase tracking-tighter mb-6 flex items-center gap-3">
          <Users className="h-5 w-5 dynamic-accent-text" /> Base de Clientes
       </h1>
       <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden glass">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left text-xs min-w-[500px]">
             <thead className="bg-white/5 text-slate-500 text-[9px] font-bold uppercase tracking-widest">
               <tr><th className="px-8 py-5">Cliente</th><th className="px-8 py-5">Terminal</th><th className="px-8 py-5">Fidelização</th></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {customers.map(c => (
-                <tr key={c.id} className="hover:bg-white/10">
+                <tr key={c.id} className="hover:bg-white/10 transition-colors">
                   <td className="px-8 py-4 font-bold text-white">{c.name}</td>
                   <td className="px-8 py-4 font-mono text-slate-500">{c.phone}</td>
                   <td className="px-8 py-4 dynamic-accent-text font-bold">{formatCurrency(c.totalSpent)}</td>
@@ -630,32 +745,35 @@ const CRM: React.FC = () => {
 const OrdersKanban: React.FC = () => {
   const { orders, updateOrderStatus } = usePeixaria();
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6 animate-in fade-in">
       <h1 className="text-xl font-bold text-white uppercase tracking-tighter flex items-center gap-3">
          <LayoutGrid className="h-5 w-5 dynamic-accent-text" /> Fluxo de Pedidos
       </h1>
       <div className="flex gap-6 overflow-x-auto pb-10 custom-scrollbar">
         {Object.values(OrderStatus).map(status => (
-          <div key={status} className="min-w-[300px] flex-shrink-0 bg-white/5 p-5 rounded-[32px] border border-white/10 glass h-fit">
+          <div key={status} className="min-w-[300px] flex-shrink-0 bg-white/5 p-5 rounded-[32px] border border-white/10 glass h-fit shadow-xl">
             <h3 className="font-bold mb-6 text-slate-500 uppercase text-[9px] tracking-[0.2em]">{status}</h3>
             <div className="space-y-4">
               {orders.filter(o => o.status === status).map(o => (
-                <div key={o.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-blue-500/40 transition-all cursor-pointer">
+                <div key={o.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-blue-500/40 transition-all cursor-pointer group">
                   <div className="flex justify-between mb-2">
                     <span className="text-[9px] font-bold dynamic-accent-text">{o.id}</span>
                     <span className="text-[8px] text-slate-600 font-bold">{new Date(o.createdAt).toLocaleTimeString()}</span>
                   </div>
-                  <p className="font-bold text-white text-[11px] mb-1 line-clamp-1">{o.customerName}</p>
+                  <p className="font-bold text-white text-[11px] mb-1 line-clamp-1 group-hover:text-blue-400 transition-colors">{o.customerName}</p>
                   <p className="font-bold text-white text-sm mb-4">{formatCurrency(o.total)}</p>
                   <select 
                     value={o.status} 
                     onChange={e => updateOrderStatus(o.id, e.target.value as OrderStatus)} 
-                    className="w-full text-[9px] bg-black text-slate-400 border border-white/10 p-2 rounded-xl outline-none"
+                    className="w-full text-[9px] bg-black text-slate-400 border border-white/10 p-2 rounded-xl outline-none focus:ring-1 dynamic-accent-ring transition-all"
                   >
                     {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               ))}
+              {orders.filter(o => o.status === status).length === 0 && (
+                <div className="py-10 text-center text-slate-700 text-[8px] font-bold uppercase tracking-widest opacity-30 border border-dashed border-white/5 rounded-2xl">Vazio</div>
+              )}
             </div>
           </div>
         ))}
